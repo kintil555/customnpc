@@ -1,12 +1,12 @@
 package com.npcmod.client.entity;
 
 import com.npcmod.entity.NpcEntity;
-import com.npcmod.entity.NpcInventory;
 import net.minecraft.client.item.ItemModelManager;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.feature.HeldItemFeatureRenderer;
+import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 
@@ -15,11 +15,14 @@ public class NpcEntityRenderer extends LivingEntityRenderer<NpcEntity, NpcRender
     private static final Identifier STEVE_TEXTURE =
             Identifier.of("minecraft", "textures/entity/player/wide/steve.png");
 
+    private final ItemModelManager itemModelManager;
+
     public NpcEntityRenderer(EntityRendererFactory.Context context) {
         super(context,
                 new NpcEntityModel(NpcEntityModel.getTexturedModelData().createModel()),
                 0.5f);
-        this.addFeature(new HeldItemFeatureRenderer<>(this, context.getItemModelManager()));
+        this.itemModelManager = context.getItemModelManager();
+        this.addFeature(new HeldItemFeatureRenderer<>(this, itemModelManager));
     }
 
     @Override
@@ -53,9 +56,7 @@ public class NpcEntityRenderer extends LivingEntityRenderer<NpcEntity, NpcRender
                 ? NpcSkinManager.getSkin(skinName)
                 : STEVE_TEXTURE;
 
-        NpcInventory inv = entity.getNpcInventory();
-        state.mainHandStack = inv.getStack(NpcInventory.SLOT_MAINHAND).copy();
-        state.offHandStack  = inv.getStack(NpcInventory.SLOT_OFFHAND).copy();
+        ArmedEntityRenderState.updateRenderState(entity, state, itemModelManager);
     }
 
     @Override

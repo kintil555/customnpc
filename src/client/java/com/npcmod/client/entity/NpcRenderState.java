@@ -1,10 +1,9 @@
 package com.npcmod.client.entity;
 
-import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
 import net.minecraft.util.Identifier;
 
-public class NpcRenderState extends LivingEntityRenderState {
+public class NpcRenderState extends ArmedEntityRenderState {
 
     public float npcHeadPitch;
     public float npcHeadYaw;
@@ -24,7 +23,4 @@ public class NpcRenderState extends LivingEntityRenderState {
     public float npcLeftLegRoll;
 
     public Identifier skinTexture;
-
-    public ItemStack mainHandStack = ItemStack.EMPTY;
-    public ItemStack offHandStack = ItemStack.EMPTY;
 }
