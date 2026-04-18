@@ -18,5 +18,6 @@
   "screen.npcmod.slot_feet": "Feet Slot",
   "screen.npcmod.slot_mainhand": "Main Hand",
   "screen.npcmod.slot_offhand": "Off Hand",
-  "npcmod.hint.remove": "Sneak+Right-click with NPC Spawner to remove"
+  "npcmod.hint.place": "Right-click block to place NPC",
+  "npcmod.hint.pickup": "Sneak + Right-click NPC to pick up"
 }

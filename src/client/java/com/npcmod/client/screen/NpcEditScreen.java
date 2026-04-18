@@ -14,33 +14,35 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class NpcEditScreen extends HandledScreen<NpcEditScreenHandler> {
 
-    private static final int BG_COLOR       = 0xFF2B2B2B;
-    private static final int PANEL_COLOR    = 0xFF3A3A3A;
-    private static final int BORDER_COLOR   = 0xFF555555;
-    private static final int LABEL_COLOR    = 0xFFCCCCCC;
-    private static final int TITLE_COLOR    = 0xFFFFFFFF;
-    private static final int SECTION_COLOR  = 0xFFAAAAAA;
-    private static final int FIELD_BG       = 0xFF1A1A1A;
+    // Warna
+    private static final int COL_BG      = 0xFF1E1E2E;
+    private static final int COL_PANEL   = 0xFF2A2A3E;
+    private static final int COL_BORDER  = 0xFF5555AA;
+    private static final int COL_HEADER  = 0xFF7777FF;
+    private static final int COL_LABEL   = 0xFFCCCCDD;
+    private static final int COL_WHITE   = 0xFFFFFFFF;
+    private static final int COL_AXIS    = 0xFF88AAFF;
 
-    private static final String[] PART_LABELS    = {"Head", "Body", "R.Arm", "L.Arm", "R.Leg", "L.Leg"};
-    private static final String[] PART_KEYS_BASE = {
-            "head", "body", "right_arm", "left_arm", "right_leg", "left_leg"
-    };
-    private static final boolean[] HAS_ROLL = {true, false, true, true, true, true};
+    // Layout — panel kiri (slot) dan panel kanan (rotasi + skin)
+    private static final int LEFT_W      = 36;   // lebar panel slot
+    private static final int RIGHT_X     = 38;   // mulai panel rotasi
+    private static final int FIELD_W     = 40;
+    private static final int FIELD_H     = 12;
+    private static final int ROW_H       = 16;
+    private static final int HEADER_H    = 14;
+
+    private static final String[] PART_LABELS = {"Head", "Body", "R.Arm", "L.Arm", "R.Leg", "L.Leg"};
+    // axis: 0=X(pitch), 1=Y(yaw), 2=Z(roll). Body hanya punya Y.
+    private static final boolean[] HAS_X = {true,  false, true,  true,  true,  true};
+    private static final boolean[] HAS_Z = {true,  false, true,  true,  true,  true};
 
     private int npcEntityId = -1;
-
-    private final TextFieldWidget[][] rotFields = new TextFieldWidget[6][3];
+    private final TextFieldWidget[][] rotFields = new TextFieldWidget[6][3]; // [part][0=X,1=Y,2=Z]
     private TextFieldWidget skinField;
     private ButtonWidget applyRotBtn;
     private ButtonWidget applySkinBtn;
-
-    private static final String[] AXIS = {"X°", "Y°", "Z°"};
 
     public NpcEditScreen(NpcEditScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
@@ -53,51 +55,53 @@ public class NpcEditScreen extends HandledScreen<NpcEditScreenHandler> {
     protected void init() {
         super.init();
 
-        int rotX = this.x + 36;
-        int rotStartY = this.y + 16;
-        int rowH = 18;
-        int fieldW = 42;
-        int fieldH = 14;
+        // Posisi absolut area rotasi
+        int rx = this.x + RIGHT_X + 38; // geser kanan setelah label part
+        int ry = this.y + HEADER_H + 4;
 
         for (int part = 0; part < 6; part++) {
-            int py = rotStartY + part * rowH;
+            int py = ry + part * ROW_H;
             for (int axis = 0; axis < 3; axis++) {
-                if (axis == 1 || HAS_ROLL[part]) {
-                    TextFieldWidget field = new TextFieldWidget(
-                            this.textRenderer,
-                            rotX + axis * (fieldW + 2), py,
-                            fieldW, fieldH,
-                            Text.empty()
-                    );
-                    field.setMaxLength(8);
-                    field.setText("0.0");
-                    rotFields[part][axis] = field;
-                    this.addDrawableChild(field);
-                }
+                boolean enabled = axis == 1                          // Y selalu ada
+                        || (axis == 0 && HAS_X[part])
+                        || (axis == 2 && HAS_Z[part]);
+                if (!enabled) continue;
+
+                TextFieldWidget field = new TextFieldWidget(
+                        this.textRenderer,
+                        rx + axis * (FIELD_W + 3), py,
+                        FIELD_W, FIELD_H,
+                        Text.empty()
+                );
+                field.setMaxLength(8);
+                field.setText("0.0");
+                rotFields[part][axis] = field;
+                this.addDrawableChild(field);
             }
         }
 
-        int skinY = this.y + 130;
+        // Baris skin — di bawah rotasi dengan jarak cukup
+        int skinY = this.y + HEADER_H + 4 + 6 * ROW_H + 6;
         skinField = new TextFieldWidget(
                 this.textRenderer,
-                this.x + 36, skinY,
-                160, 14,
-                Text.translatable("screen.npcmod.skin")
+                this.x + RIGHT_X, skinY,
+                168, FIELD_H,
+                Text.empty()
         );
         skinField.setMaxLength(128);
-        skinField.setPlaceholder(Text.literal("Username or URL..."));
+        skinField.setPlaceholder(Text.literal("Username or skin URL..."));
         this.addDrawableChild(skinField);
 
         applySkinBtn = ButtonWidget.builder(
-                Text.translatable("screen.npcmod.apply"),
+                Text.literal("Apply"),
                 b -> sendSkinUpdate()
-        ).dimensions(this.x + 200, skinY - 1, 40, 16).build();
+        ).dimensions(this.x + RIGHT_X + 172, skinY - 1, 38, FIELD_H + 2).build();
         this.addDrawableChild(applySkinBtn);
 
         applyRotBtn = ButtonWidget.builder(
-                Text.literal("Apply"),
+                Text.literal("Apply Rotations"),
                 b -> sendRotationUpdate()
-        ).dimensions(this.x + 36, this.y + 148, 60, 14).build();
+        ).dimensions(this.x + RIGHT_X, skinY + FIELD_H + 4, 100, 14).build();
         this.addDrawableChild(applyRotBtn);
 
         populateFromSyncData();
@@ -107,55 +111,51 @@ public class NpcEditScreen extends HandledScreen<NpcEditScreenHandler> {
         NbtCompound data = NpcModClient.lastOpenedNpcData;
         if (data == null) return;
 
-        setFieldDeg(rotFields[0][0], data, "head_pitch");
-        setFieldDeg(rotFields[0][1], data, "head_yaw");
-        setFieldDeg(rotFields[0][2], data, "head_roll");
-        setFieldDeg(rotFields[1][1], data, "body_yaw");
-        setFieldDeg(rotFields[2][0], data, "right_arm_pitch");
-        setFieldDeg(rotFields[2][1], data, "right_arm_yaw");
-        setFieldDeg(rotFields[2][2], data, "right_arm_roll");
-        setFieldDeg(rotFields[3][0], data, "left_arm_pitch");
-        setFieldDeg(rotFields[3][1], data, "left_arm_yaw");
-        setFieldDeg(rotFields[3][2], data, "left_arm_roll");
-        setFieldDeg(rotFields[4][0], data, "right_leg_pitch");
-        setFieldDeg(rotFields[4][1], data, "right_leg_yaw");
-        setFieldDeg(rotFields[4][2], data, "right_leg_roll");
-        setFieldDeg(rotFields[5][0], data, "left_leg_pitch");
-        setFieldDeg(rotFields[5][1], data, "left_leg_yaw");
-        setFieldDeg(rotFields[5][2], data, "left_leg_roll");
+        setDeg(rotFields[0][0], data, "head_pitch");
+        setDeg(rotFields[0][1], data, "head_yaw");
+        setDeg(rotFields[0][2], data, "head_roll");
+        setDeg(rotFields[1][1], data, "body_yaw");
+        setDeg(rotFields[2][0], data, "right_arm_pitch");
+        setDeg(rotFields[2][1], data, "right_arm_yaw");
+        setDeg(rotFields[2][2], data, "right_arm_roll");
+        setDeg(rotFields[3][0], data, "left_arm_pitch");
+        setDeg(rotFields[3][1], data, "left_arm_yaw");
+        setDeg(rotFields[3][2], data, "left_arm_roll");
+        setDeg(rotFields[4][0], data, "right_leg_pitch");
+        setDeg(rotFields[4][1], data, "right_leg_yaw");
+        setDeg(rotFields[4][2], data, "right_leg_roll");
+        setDeg(rotFields[5][0], data, "left_leg_pitch");
+        setDeg(rotFields[5][1], data, "left_leg_yaw");
+        setDeg(rotFields[5][2], data, "left_leg_roll");
 
         String skin = data.getString("skin_name");
-        if (skin != null && !skin.isEmpty()) {
-            skinField.setText(skin);
-        }
+        if (skin != null && !skin.isEmpty()) skinField.setText(skin);
     }
 
-    private void setFieldDeg(TextFieldWidget field, NbtCompound nbt, String key) {
-        if (field == null) return;
-        float rad = nbt.getFloat(key);
-        float deg = (float) Math.toDegrees(rad);
-        field.setText(String.format("%.1f", deg));
+    private void setDeg(TextFieldWidget f, NbtCompound nbt, String key) {
+        if (f == null) return;
+        f.setText(String.format("%.1f", (float) Math.toDegrees(nbt.getFloat(key))));
     }
 
     private void sendRotationUpdate() {
         if (npcEntityId < 0) return;
         NbtCompound rot = new NbtCompound();
-        putRadians(rot, "head_pitch",      rotFields[0][0]);
-        putRadians(rot, "head_yaw",        rotFields[0][1]);
-        putRadians(rot, "head_roll",       rotFields[0][2]);
-        putRadians(rot, "body_yaw",        rotFields[1][1]);
-        putRadians(rot, "right_arm_pitch", rotFields[2][0]);
-        putRadians(rot, "right_arm_yaw",   rotFields[2][1]);
-        putRadians(rot, "right_arm_roll",  rotFields[2][2]);
-        putRadians(rot, "left_arm_pitch",  rotFields[3][0]);
-        putRadians(rot, "left_arm_yaw",    rotFields[3][1]);
-        putRadians(rot, "left_arm_roll",   rotFields[3][2]);
-        putRadians(rot, "right_leg_pitch", rotFields[4][0]);
-        putRadians(rot, "right_leg_yaw",   rotFields[4][1]);
-        putRadians(rot, "right_leg_roll",  rotFields[4][2]);
-        putRadians(rot, "left_leg_pitch",  rotFields[5][0]);
-        putRadians(rot, "left_leg_yaw",    rotFields[5][1]);
-        putRadians(rot, "left_leg_roll",   rotFields[5][2]);
+        putRad(rot, "head_pitch",      rotFields[0][0]);
+        putRad(rot, "head_yaw",        rotFields[0][1]);
+        putRad(rot, "head_roll",       rotFields[0][2]);
+        putRad(rot, "body_yaw",        rotFields[1][1]);
+        putRad(rot, "right_arm_pitch", rotFields[2][0]);
+        putRad(rot, "right_arm_yaw",   rotFields[2][1]);
+        putRad(rot, "right_arm_roll",  rotFields[2][2]);
+        putRad(rot, "left_arm_pitch",  rotFields[3][0]);
+        putRad(rot, "left_arm_yaw",    rotFields[3][1]);
+        putRad(rot, "left_arm_roll",   rotFields[3][2]);
+        putRad(rot, "right_leg_pitch", rotFields[4][0]);
+        putRad(rot, "right_leg_yaw",   rotFields[4][1]);
+        putRad(rot, "right_leg_roll",  rotFields[4][2]);
+        putRad(rot, "left_leg_pitch",  rotFields[5][0]);
+        putRad(rot, "left_leg_yaw",    rotFields[5][1]);
+        putRad(rot, "left_leg_roll",   rotFields[5][2]);
         ClientPlayNetworking.send(new UpdateNpcRotationC2SPayload(npcEntityId, rot));
     }
 
@@ -163,90 +163,81 @@ public class NpcEditScreen extends HandledScreen<NpcEditScreenHandler> {
         if (npcEntityId < 0) return;
         String skin = skinField.getText().trim();
         ClientPlayNetworking.send(new UpdateNpcSkinC2SPayload(npcEntityId, skin));
-        if (!skin.isEmpty()) {
-            NpcSkinManager.getSkin(skin);
-        }
+        if (!skin.isEmpty()) NpcSkinManager.getSkin(skin);
     }
 
-    private void putRadians(NbtCompound nbt, String key, TextFieldWidget field) {
-        if (field == null) {
-            nbt.putFloat(key, 0.0f);
-            return;
-        }
+    private void putRad(NbtCompound nbt, String key, TextFieldWidget f) {
+        if (f == null) { nbt.putFloat(key, 0f); return; }
         try {
-            float deg = Float.parseFloat(field.getText());
-            nbt.putFloat(key, (float) Math.toRadians(deg));
+            nbt.putFloat(key, (float) Math.toRadians(Float.parseFloat(f.getText())));
         } catch (NumberFormatException e) {
-            nbt.putFloat(key, 0.0f);
+            nbt.putFloat(key, 0f);
         }
     }
 
     @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        int bg = this.x;
-        int top = this.y;
-        int w = this.backgroundWidth;
-        int h = this.backgroundHeight;
+    protected void drawBackground(DrawContext ctx, float delta, int mx, int my) {
+        int x = this.x, y = this.y, w = this.backgroundWidth, h = this.backgroundHeight;
 
-        context.fill(bg, top, bg + w, top + h, BG_COLOR);
-        context.drawBorder(bg, top, w, h, BORDER_COLOR);
+        // Background utama
+        ctx.fill(x, y, x + w, y + h, COL_BG);
+        ctx.drawBorder(x, y, w, h, COL_BORDER);
 
-        context.fill(bg + 2, top + 2, bg + 30, top + h - 2, PANEL_COLOR);
+        // Panel kiri — slot equipment
+        ctx.fill(x + 1, y + 1, x + LEFT_W + 2, y + h - 1, COL_PANEL);
+        ctx.drawBorder(x + 1, y + 1, LEFT_W + 1, h - 2, COL_BORDER);
+        ctx.drawText(textRenderer, "Equip", x + 4, y + 4, COL_HEADER, true);
 
-        int rotPanelX = bg + 32;
-        int rotPanelW = 160;
-        context.fill(rotPanelX, top + 2, rotPanelX + rotPanelW, top + 128, PANEL_COLOR);
+        // Divider vertikal
+        ctx.fill(x + LEFT_W + 2, y + 1, x + LEFT_W + 3, y + h - 1, COL_BORDER);
 
-        context.fill(bg + 32, top + 128, bg + 248, top + 150, PANEL_COLOR);
+        // Panel kanan — rotasi
+        int rx = x + RIGHT_X;
+        int ry = y + HEADER_H + 4;
 
-        String[] slotLabels = {"HEAD", "CHEST", "LEGS", "FEET", "MAIN", "OFF"};
-        for (int i = 0; i < 6; i++) {
-            int sy = top + 20 + i * 18;
-            context.drawBorder(bg + 5, sy - 1, 20, 18, BORDER_COLOR);
-            context.drawText(textRenderer, slotLabels[i].substring(0, 1),
-                    bg + 26, sy + 4, SECTION_COLOR, false);
-        }
+        // Header rotasi
+        ctx.fill(rx, y + 1, x + w - 1, y + HEADER_H + 2, COL_PANEL);
+        ctx.drawText(textRenderer, "Edit Rotations", rx + 2, y + 4, COL_HEADER, true);
 
-        int rotX = this.x + 36;
-        int rotStartY = this.y + 16;
-        int rowH = 18;
-
-        context.drawText(textRenderer,
-                Text.translatable("screen.npcmod.rotations").getString(),
-                rotX, top + 5, TITLE_COLOR, true);
-
-        String[] axisHdr = {"X°", "Y°", "Z°"};
+        // Header kolom axis
+        String[] axisLabels = {"X°", "Y°", "Z°"};
+        int labelX = rx + 40;
         for (int a = 0; a < 3; a++) {
-            context.drawText(textRenderer, axisHdr[a],
-                    rotX + a * 44 + 16, top + 5, SECTION_COLOR, false);
+            ctx.drawText(textRenderer, axisLabels[a],
+                    labelX + a * (FIELD_W + 3) + FIELD_W / 2 - 4,
+                    y + HEADER_H + 4 - 11, COL_AXIS, false);
         }
 
+        // Label baris part + background strip selang-seling
         for (int part = 0; part < 6; part++) {
-            int py = rotStartY + part * rowH;
-            context.drawText(textRenderer, PART_LABELS[part],
-                    rotX - 30, py + 3, LABEL_COLOR, false);
+            int py = ry + part * ROW_H;
+            if (part % 2 == 0)
+                ctx.fill(rx, py - 1, x + w - 2, py + ROW_H - 3, 0x11FFFFFF);
+            ctx.drawText(textRenderer, PART_LABELS[part], rx + 2, py + 2, COL_LABEL, false);
         }
 
-        context.drawText(textRenderer,
-                Text.translatable("screen.npcmod.skin").getString(),
-                bg + 36, top + 121, LABEL_COLOR, false);
+        // Divider sebelum skin
+        int skinDivY = ry + 6 * ROW_H + 2;
+        ctx.fill(rx, skinDivY, x + w - 2, skinDivY + 1, COL_BORDER);
+        ctx.drawText(textRenderer, "Skin (username / URL)", rx + 2, skinDivY + 3, COL_HEADER, false);
+
+        // Panel player inventory
+        int invY = y + h - 78;
+        ctx.fill(x + 1, invY - 2, x + w - 1, y + h - 1, COL_PANEL);
+        ctx.drawBorder(x + 1, invY - 2, w - 2, h - invY + 1, COL_BORDER);
+        ctx.drawText(textRenderer, "Inventory", x + 5, invY - 10, COL_LABEL, false);
     }
 
     @Override
-    protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer,
-                Text.translatable("screen.npcmod.npc_edit").getString(),
-                this.titleX, this.titleY, TITLE_COLOR, false);
-        context.drawText(textRenderer,
-                this.playerInventoryTitle.getString(),
-                this.playerInventoryTitleX, this.playerInventoryTitleY, TITLE_COLOR, false);
+    protected void drawForeground(DrawContext ctx, int mx, int my) {
+        // Kosongkan — sudah digambar di drawBackground agar tidak double
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
-        super.render(context, mouseX, mouseY, delta);
-        this.drawMouseoverTooltip(context, mouseX, mouseY);
+    public void render(DrawContext ctx, int mx, int my, float delta) {
+        this.renderBackground(ctx, mx, my, delta);
+        super.render(ctx, mx, my, delta);
+        this.drawMouseoverTooltip(ctx, mx, my);
     }
 
     @Override

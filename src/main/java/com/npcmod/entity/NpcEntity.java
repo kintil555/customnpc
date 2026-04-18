@@ -73,6 +73,7 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
         super(type, world);
         this.setInvulnerable(true);
         this.setNoGravity(false);
+        this.noClip = false;
     }
 
     public static DefaultAttributeContainer.Builder createNpcAttributes() {
@@ -103,19 +104,41 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
         builder.add(NPC_SKIN_NAME, "");
     }
 
+    // Solid collision - tidak tembus blok/entity lain
+    @Override
+    public boolean isCollidable() {
+        return true;
+    }
+
+    @Override
+    public boolean isPushable() {
+        return false;
+    }
+
+    @Override
+    public void pushAwayFrom(net.minecraft.entity.Entity entity) {
+        // NPC tidak terdorong
+    }
+
     @Override
     public ActionResult interact(PlayerEntity player, Hand hand) {
         if (!this.getWorld().isClient) {
             ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
+
+            // Sneak + klik = pickup jadi item kembali ke inventory
             if (player.isSneaking()) {
-                ItemStack held = player.getStackInHand(hand);
-                if (held.isOf(com.npcmod.ModItems.NPC_SPAWNER)) {
-                    ItemStack drop = new ItemStack(com.npcmod.ModItems.NPC_SPAWNER);
-                    player.getInventory().offerOrDrop(drop);
-                    this.discard();
-                    return ActionResult.SUCCESS;
-                }
+                ItemStack drop = new ItemStack(com.npcmod.ModItems.NPC_SPAWNER);
+                // Simpan data NPC ke NBT item
+                NbtCompound npcData = new NbtCompound();
+                npcData.put("NpcData", buildSyncNbt());
+                drop.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA,
+                        net.minecraft.component.type.NbtComponent.of(npcData));
+                player.getInventory().offerOrDrop(drop);
+                this.discard();
+                return ActionResult.SUCCESS;
             }
+
+            // Klik biasa = buka GUI
             NbtCompound syncData = buildSyncNbt();
             ServerPlayNetworking.send(serverPlayer,
                     new SyncNpcDataS2CPayload(this.getId(), syncData));
@@ -170,9 +193,7 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
         this.dataTracker.set(NPC_SKIN_NAME, name == null ? "" : name);
     }
 
-    public String getSkinName() {
-        return this.dataTracker.get(NPC_SKIN_NAME);
-    }
+    public String getSkinName() { return this.dataTracker.get(NPC_SKIN_NAME); }
 
     public float getNpcHeadPitch()     { return this.dataTracker.get(NPC_HEAD_PITCH); }
     public float getNpcHeadYaw()       { return this.dataTracker.get(NPC_HEAD_YAW); }
@@ -191,9 +212,7 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
     public float getNpcLeftLegYaw()    { return this.dataTracker.get(NPC_LEFT_LEG_YAW); }
     public float getNpcLeftLegRoll()   { return this.dataTracker.get(NPC_LEFT_LEG_ROLL); }
 
-    public NpcInventory getNpcInventory() {
-        return inventory;
-    }
+    public NpcInventory getNpcInventory() { return inventory; }
 
     @Override
     public Iterable<ItemStack> getArmorItems() {
@@ -229,24 +248,11 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
             case OFFHAND  -> NpcInventory.SLOT_OFFHAND;
             default       -> -1;
         };
-        if (idx >= 0) {
-            inventory.setStack(idx, stack);
-        }
+        if (idx >= 0) inventory.setStack(idx, stack);
     }
 
     @Override
-    public Arm getMainArm() {
-        return Arm.RIGHT;
-    }
-
-    @Override
-    public boolean isPushable() {
-        return false;
-    }
-
-    @Override
-    public void pushAwayFrom(net.minecraft.entity.Entity entity) {
-    }
+    public Arm getMainArm() { return Arm.RIGHT; }
 
     @Override
     public Text getDisplayName() {
@@ -261,8 +267,7 @@ public class NpcEntity extends LivingEntity implements NamedScreenHandlerFactory
     @Override
     public void writeCustomDataToNbt(NbtCompound nbt) {
         super.writeCustomDataToNbt(nbt);
-        NbtCompound rotations = buildSyncNbt();
-        nbt.put("NpcRotations", rotations);
+        nbt.put("NpcRotations", buildSyncNbt());
         RegistryWrapper.WrapperLookup registries = this.getWorld().getRegistryManager();
         NbtList inventoryNbt = new NbtList();
         for (int i = 0; i < inventory.size(); i++) {
