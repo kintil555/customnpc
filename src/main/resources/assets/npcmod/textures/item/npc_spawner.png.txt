@@ -1,0 +1,3 @@
+Place a 16x16 PNG texture named npc_spawner.png in this directory.
+A simple player-silhouette icon is recommended.
+This file is a placeholder — delete it and add the real PNG.

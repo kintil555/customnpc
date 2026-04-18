@@ -1,0 +1,22 @@
+{
+  "item.npcmod.npc_spawner": "NPC Spawner",
+  "entity.npcmod.npc": "NPC Player",
+  "screen.npcmod.npc_edit": "Edit NPC",
+  "screen.npcmod.equipment": "Equipment",
+  "screen.npcmod.rotations": "Rotations",
+  "screen.npcmod.head": "Head",
+  "screen.npcmod.body": "Body",
+  "screen.npcmod.right_arm": "R.Arm",
+  "screen.npcmod.left_arm": "L.Arm",
+  "screen.npcmod.right_leg": "R.Leg",
+  "screen.npcmod.left_leg": "L.Leg",
+  "screen.npcmod.skin": "Skin (username/URL)",
+  "screen.npcmod.apply": "Apply",
+  "screen.npcmod.slot_head": "Head Slot",
+  "screen.npcmod.slot_chest": "Chest Slot",
+  "screen.npcmod.slot_legs": "Legs Slot",
+  "screen.npcmod.slot_feet": "Feet Slot",
+  "screen.npcmod.slot_mainhand": "Main Hand",
+  "screen.npcmod.slot_offhand": "Off Hand",
+  "npcmod.hint.remove": "Sneak+Right-click with NPC Spawner to remove"
+}
