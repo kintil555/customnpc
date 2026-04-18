@@ -106,14 +106,11 @@ public class NpcEntityModel extends EntityModel<NpcRenderState> implements Model
         leftLeg.roll  = state.npcLeftLegRoll;
     }
 
+    // ModelWithArms implementation
     @Override
     public void setArmAngle(Arm arm, MatrixStack matrices) {
-        getArm(arm).rotate(matrices);
-    }
-
-    @Override
-    public ModelPart getArm(Arm arm) {
-        return arm == Arm.RIGHT ? rightArm : leftArm;
+        ModelPart armPart = arm == Arm.RIGHT ? rightArm : leftArm;
+        armPart.rotate(matrices);
     }
 
     public ModelPart getHead()     { return head; }
