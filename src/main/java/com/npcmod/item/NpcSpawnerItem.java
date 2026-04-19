@@ -56,7 +56,7 @@ public class NpcSpawnerItem extends Item {
                 spawnPos.getX() + 0.5,
                 spawnPos.getY(),
                 spawnPos.getZ() + 0.5,
-                context.getHorizontalPlayerFacing().getOpposite().getHorizontal() * 90.0f,
+                directionToYaw(context.getHorizontalPlayerFacing().getOpposite()),
                 0.0f
         );
         world.spawnEntity(npc);
@@ -65,5 +65,15 @@ public class NpcSpawnerItem extends Item {
             context.getStack().decrement(1);
         }
         return ActionResult.CONSUME;
+    }
+
+    private static float directionToYaw(net.minecraft.util.math.Direction dir) {
+        return switch (dir) {
+            case SOUTH -> 0.0f;
+            case WEST  -> 90.0f;
+            case NORTH -> 180.0f;
+            case EAST  -> 270.0f;
+            default    -> 0.0f;
+        };
     }
 }
