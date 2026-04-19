@@ -56,7 +56,7 @@ public class NpcSpawnerItem extends Item {
                 spawnPos.getX() + 0.5,
                 spawnPos.getY(),
                 spawnPos.getZ() + 0.5,
-                context.getPlayerFacing().getOpposite().asRotation(),
+                context.getHorizontalPlayerFacing().getOpposite().asRotation(),
                 0.0f
         );
         world.spawnEntity(npc);
